@@ -1,6 +1,6 @@
 # DeepSeek Harness Installer & Updater — Punto Vuela Montejaque
 
-Gestor gráfico para instalar, actualizar, comprobar, reparar y desinstalar **DeepSeek Harness** en Linux x86_64. Se distribuye como AppImage y realiza la instalación dentro del perfil del usuario, sin permisos root.
+Gestor gráfico estable para instalar, actualizar, comprobar, reparar y desinstalar **DeepSeek Harness** en Linux x86_64. Se distribuye como AppImage y realiza la instalación dentro del perfil del usuario, sin permisos root.
 
 ## Descargar
 
@@ -20,6 +20,8 @@ chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
 - Consulta la última versión publicada de \`@deepseek-ai/dsh\` directamente en el registro oficial npm.
 - Descarga y configura automáticamente Node.js 24 LTS y npm en un directorio privado del usuario cuando hacen falta; no requiere NVM ni Node.js del sistema.
 - El lanzador utiliza exclusivamente el runtime privado para evitar conflictos con versiones antiguas de Node.js.
+- Comprueba el puerto TCP `127.0.0.1:3080` antes de arrancar: si Harness ya está activo, abre la instancia existente y evita iniciar un servidor duplicado.
+- Espera a que el servicio web esté disponible y muestra un diagnóstico si el arranque falla.
 - Instala y actualiza el paquete oficial en el perfil del usuario.
 - Evita reinstalar si ya está instalada la última versión.
 - Muestra el registro de npm en directo y el progreso de las operaciones.
@@ -42,7 +44,7 @@ chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
 
 - Linux x86_64.
 - Conexión a Internet durante la primera instalación para descargar Node.js 24 LTS y DeepSeek Harness.
-- npm compatible.
+- No necesitas instalar Node.js, npm ni NVM previamente.
 - Conexión a Internet para consultar npm e instalar el paquete.
 - Entorno gráfico compatible con AppImage.
 
@@ -54,7 +56,7 @@ La guía PDF se abre desde el botón **Ver guía de uso** de la aplicación. Tam
 
 ## Compilación
 
-Consulta [BUILD.md](BUILD.md). GitHub Actions compila sobre Ubuntu 20.04 (glibc 2.31), comprueba que la ventana real se muestra y publica un Release con AppImage y SHA256.
+Consulta [BUILD.md](BUILD.md). GitHub Actions compila sobre Ubuntu 20.04 (glibc 2.31), comprueba que la ventana real se muestra y publica una versión estable con AppImage y SHA256.
 
 ## Fuente oficial
 
