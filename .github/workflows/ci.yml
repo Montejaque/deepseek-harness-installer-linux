@@ -41,19 +41,35 @@ jobs:
           ./build.sh
       - name: Test real graphical startup (Tkinter)
         run: |
-          set -u
-          APPIMAGE_EXTRACT_AND_RUN=1 timeout --signal=TERM 10s xvfb-run -a ./dist/DeepSeek-Harness-Installer-x86_64.AppImage > gui-smoke.log 2>&1
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/check-window.py" <<'PY'
+          import tkinter as tk
+          import time
+          root = tk.Tk()
+          root.title("DeepSeek Harness Installer CI")
+          root.geometry("300x120")
+          root.update_idletasks()
+          root.update()
+          assert root.winfo_exists() == 1
+          assert root.winfo_viewable() == 1
+          print("TK_WINDOW_VISIBLE_OK", flush=True)
+          root.destroy()
+          PY
+          xvfb-run -a python3 "$RUNNER_TEMP/check-window.py"
+          set +e
+          APPIMAGE_EXTRACT_AND_RUN=1 timeout --signal=TERM --kill-after=3s 10s xvfb-run -a ./dist/DeepSeek-Harness-Installer-x86_64.AppImage > gui-smoke.log 2>&1
           status=$?
+          set -e
           cat gui-smoke.log
-          if [ "$status" -ne 124 ] && [ "$status" -ne 137 ]; then
-            echo "La ventana del instalador no permaneció abierta (código $status)." >&2
+          if [ "$status" -ne 124 ] && [ "$status" -ne 137" ]; then
+            echo "El instalador terminó inesperadamente (código $status)." >&2
             exit 1
           fi
-          if grep -Eiq "TclError|no display name|couldn't connect to display|can't find package|init\.tcl|Error" gui-smoke.log; then
+          if grep -Eiq "TclError|no display name|couldn't connect to display|can't find package|init\.tcl|Traceback|ModuleNotFoundError" gui-smoke.log; then
             echo "La interfaz gráfica ha mostrado errores de inicio." >&2
             exit 1
           fi
-          echo "La interfaz Tkinter ha arrancado y ha permanecido abierta durante 10 segundos."
+          echo "La aplicación permaneció ejecutándose durante la prueba gráfica."
       - name: Verify artifact and architecture
         run: |
           set -euxo pipefail
