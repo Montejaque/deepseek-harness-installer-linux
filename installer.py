@@ -32,7 +32,7 @@ YELLOW = "#F3D54E"
 INK = "#171717"
 MUTED = "#555555"
 PANEL = "#F7F7F5"
-NODE_MIN = (22, 19, 0)
+NODE_MIN = (24, 9, 0)
 REGISTRY_URL = "https://registry.npmjs.org/%40deepseek-ai%2Fdsh"
 
 
@@ -73,7 +73,7 @@ def runtime_paths():
                 result = subprocess.run([str(node), "--version"], capture_output=True,
                                         text=True, timeout=12, check=False)
                 parsed = version_tuple(result.stdout.strip())
-                if result.returncode == 0 and parsed and (parsed >= NODE_MIN or parsed[0] >= 24):
+                if result.returncode == 0 and parsed and parsed >= NODE_MIN:
                     return str(node), str(npm), directory
             except (OSError, subprocess.TimeoutExpired):
                 continue
@@ -83,7 +83,9 @@ def runtime_paths():
 def runtime_status():
     node, npm, directory = runtime_paths()
     if not node or not npm:
-        return False, "No se encuentra Node.js compatible y npm en PATH o NVM."
+        return False, ("DeepSeek Harness necesita Node.js 24.9.0 o posterior. "
+                        "Se ha encontrado una versión incompatible o no se ha podido localizar npm. "
+                        "Actualiza Node.js desde NVM y vuelve a comprobar.")
     try:
         version = subprocess.run([node, "--version"], capture_output=True,
                                  text=True, timeout=12, check=True).stdout.strip()
@@ -188,10 +190,16 @@ def write_launchers(callback=None):
         '  done\n'
         'fi\n'
         'if ! command -v node >/dev/null 2>&1; then\n'
-        '  echo "No se encuentra Node.js. Instala Node.js 22.19.0 o superior y vuelve a intentarlo."\n'
-        '  echo "Rutas comprobadas: PATH y ~/.nvm/versions/node/*/bin"\n'
+        '  echo "ERROR: No se encuentra Node.js en PATH ni en NVM."\n'
         '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
         '  exit 127\n'
+        'fi\n'
+        'if ! node -e \'const [a,b]=process.versions.node.split(".").map(Number); if (a < 24 || (a === 24 && b < 9)) process.exit(1)\' >/dev/null 2>&1; then\n'
+        '  echo "ERROR: DeepSeek Harness necesita Node.js 24.9.0 o posterior."\n'
+        '  echo "La versión detectada es: $(node --version)"\n'
+        '  echo "Actualiza Node.js con NVM (por ejemplo: nvm install 24) y vuelve a abrir la aplicación."\n'
+        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
+        '  exit 1\n'
         'fi\n'
         'if [ ! -x "$APP_DIR/node_modules/.bin/dsh" ]; then\n'
         '  echo "No se encuentra el ejecutable dsh. Abre DeepSeek Harness Installer y pulsa Instalar / actualizar."\n'
