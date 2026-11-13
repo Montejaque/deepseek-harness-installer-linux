@@ -87,8 +87,12 @@ def runtime_status():
     try:
         version = subprocess.run([node, "--version"], capture_output=True,
                                  text=True, timeout=12, check=True).stdout.strip()
-        npm_version = subprocess.run([npm, "--version"], capture_output=True,
-                                     text=True, timeout=12, check=True).stdout.strip()
+        # Ejecutar el CLI de npm con el Node absoluto evita depender del PATH
+        # que GNOME entrega a procesos gráficos (NVM no siempre está cargado).
+        npm_cli = str(Path(npm).resolve())
+        npm_version = subprocess.run([node, npm_cli, "--version"],
+                                     capture_output=True, text=True, timeout=12,
+                                     check=True).stdout.strip()
         return True, f"Node.js {version} · npm {npm_version} · {directory}"
     except Exception as exc:
         return False, "No se pudo comprobar Node.js/npm: " + str(exc)
@@ -120,10 +124,11 @@ def emit(callback, kind, value):
         callback(kind, value)
 
 
-def run_npm_install(npm, latest, callback):
+def run_npm_install(node, npm, latest, callback):
     OPT.mkdir(parents=True, exist_ok=True)
+    npm_cli = str(Path(npm).resolve())
     command = [
-        npm, "install", "--prefix", str(OPT), "--no-audit", "--no-fund",
+        node, npm_cli, "install", "--prefix", str(OPT), "--no-audit", "--no-fund",
         "--progress=false", "--prefer-offline", "--no-update-notifier",
         "--fetch-retries=2", "--fetch-timeout=120000", f"{PACKAGE}@{latest}"
     ]
@@ -415,7 +420,7 @@ class Installer(tk.Tk):
                 self.progress_update(90, "Comprobando accesos…")
             else:
                 self.progress_update(10, "Preparando instalación…")
-                run_npm_install(npm, latest, self._worker_event)
+                run_npm_install(node, npm, latest, self._worker_event)
                 self.progress_update(82, "Verificando paquete instalado…")
             package_file = OPT / "node_modules" / "@deepseek-ai" / "dsh" / "package.json"
             if not package_file.is_file() or not (OPT / "node_modules/.bin/dsh").exists():
