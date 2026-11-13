@@ -50,7 +50,15 @@ jobs:
                   return json.dumps({"dist-tags": {"latest": "1.2.3"}}).encode()
           with patch("installer.urllib.request.urlopen", return_value=Response()):
               assert installer.latest_npm_version() == "1.2.3"
-          print("NPM_REGISTRY_VERSION_QUERY_TEST_OK")
+          class NextResponse(Response):
+              def read(self):
+                  return json.dumps({"dist-tags": {"latest": "0.2.1", "next": "0.2.2-rc.3"}}).encode()
+          with patch("installer.urllib.request.urlopen", return_value=NextResponse()):
+              assert installer.latest_npm_version() == "0.2.2-rc.3"
+          with patch("installer.runtime_paths", return_value=(None, None, None)):
+              ok, status = installer.runtime_status()
+              assert ok and "automáticamente" in status
+          print("NPM_REGISTRY_AND_AUTOMATIC_NODE_SETUP_TESTS_OK")
           PY
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O "$RUNNER_TEMP/appimagetool"
@@ -133,7 +141,8 @@ jobs:
             - Guía PDF integrada, barra de progreso y reparación del icono y menú GNOME.
             - Se comprueba que la ventana real del instalador aparece en CI.
             - Instalación por usuario, sin permisos root.
-            - Requiere Node.js compatible y conexión a Internet para instalar `@deepseek-ai/dsh`.
+            - Descarga automáticamente Node.js 24 LTS y npm en el perfil del usuario; no requiere Node.js ni NVM preinstalados.
+            - Necesita conexión a Internet para preparar el runtime e instalar `@deepseek-ai/dsh`.
             - Versión preliminar para pruebas; no es una versión estable.
           prerelease: true
           files: |
