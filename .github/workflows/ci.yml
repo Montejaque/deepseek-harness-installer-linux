@@ -116,7 +116,7 @@ jobs:
           retention-days: 30
 
   release:
-    name: Publish test release
+    name: Publish stable release
     needs: build-appimage
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-22.04
@@ -129,22 +129,22 @@ jobs:
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.${{ github.run_number }}
+          tag_name: v1.0.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: DeepSeek Harness Installer v0.1.${{ github.run_number }}
+          name: DeepSeek Harness Installer v1.0.${{ github.run_number }}
           body: |
-            Versión preliminar del instalador AppImage para Linux x86_64. Cada ejecución genera un tag independiente; no reutiliza versiones anteriores.
+            Versión estable del instalador AppImage para Linux x86_64.
 
-            - Construida sobre Ubuntu 20.04 (glibc 2.31).\n            - Prueba automatizada confirma que la ventana real del instalador aparece.
-            - Interfaz gráfica alineada con los gestores de Punto Vuela Montejaque.
-            - Consulta la última versión directamente en el registro npm, sin depender de que NVM esté cargado en el escritorio.
-            - Guía PDF integrada, barra de progreso y reparación del icono y menú GNOME.
-            - Se comprueba que la ventana real del instalador aparece en CI.
-            - Instalación por usuario, sin permisos root.
-            - Descarga automáticamente Node.js 24 LTS y npm en el perfil del usuario; no requiere Node.js ni NVM preinstalados.
-            - Necesita conexión a Internet para preparar el runtime e instalar `@deepseek-ai/dsh`.
-            - Versión preliminar para pruebas; no es una versión estable.
-          prerelease: true
+            - Construida sobre Ubuntu 20.04 (glibc 2.31) para compatibilidad con sistemas Linux x86_64.
+            - Descarga y configura Node.js 24 LTS y npm en un directorio privado; no requiere NVM, Node.js del sistema ni permisos root.
+            - Instala y actualiza el paquete oficial `@deepseek-ai/dsh`, priorizando la etiqueta npm `next` y usando `latest` como alternativa.
+            - Acceso GNOME reparado: utiliza el runtime privado, detecta el puerto TCP 3080, reutiliza instancias activas y espera al servidor web antes de abrir el navegador.
+            - Diagnóstico de arranque en `~/.local/state/deepseek-harness/launcher.log`.
+            - Guía PDF integrada y actualizada, barra de progreso, reparación del icono y menú GNOME.
+            - Conserva los perfiles, sesiones y configuración de `~/.dsh` al actualizar o desinstalar.
+            - CI valida sintaxis, selección de versión npm, construcción AppImage, ventana gráfica y SHA256.
+            - Requiere conexión a Internet para preparar el runtime e instalar el paquete de DeepSeek Harness.
+          prerelease: false
           files: |
             dist/DeepSeek-Harness-Installer-x86_64.AppImage
             dist/SHA256SUMS
