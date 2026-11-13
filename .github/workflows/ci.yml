@@ -2,7 +2,6 @@ name: CI and AppImage
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -56,11 +55,33 @@ jobs:
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 30
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+
+  release:
+    name: Publish test release
+    needs: build-appimage
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Download verified AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: DeepSeek-Harness-Installer-x86_64
+          path: dist
+      - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v0.1.0
+          target_commitish: ${{ github.sha }}
+          name: DeepSeek Harness Installer v0.1.0
+          body: |
+            Primera versión de pruebas del instalador AppImage para Linux x86_64.
+
+            - Instalación por usuario, sin permisos root.
+            - Requiere Node.js compatible y conexión a Internet para instalar `@deepseek-ai/dsh`.
+            - Compilación y checksum verificados por GitHub Actions.
+            - Versión preliminar para pruebas; no es una versión estable.
+          prerelease: true
           files: |
             dist/DeepSeek-Harness-Installer-x86_64.AppImage
             dist/SHA256SUMS
-          generate_release_notes: true
+          fail_on_unmatched_files: true
