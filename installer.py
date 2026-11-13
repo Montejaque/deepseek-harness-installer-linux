@@ -99,6 +99,7 @@ class Installer(tk.Tk):
         self.minsize(650, 500)
         self.configure(bg="#f4f6fa")
         self.busy = False
+        self.status_checking = False
         self._build()
         self.refresh_status()
 
@@ -176,10 +177,40 @@ class Installer(tk.Tk):
         self.installed_var.set("Versión instalada: " + installed_version())
 
     def refresh_status(self):
-        ok, text = check_runtime()
-        self.runtime_var.set(("✓ " if ok else "✗ ") + text)
+        if self.status_checking:
+            return
+        self.status_checking = True
+        self.runtime_var.set("Comprobando Node.js y npm…")
+        self.latest_var.set("Última versión npm: consultando…")
         self.refresh_labels()
-        self.log_msg(text)
+        self.log_msg("Comprobando requisitos y consultando el registro oficial de npm…")
+
+        def worker():
+            ok, runtime_text = check_runtime()
+            latest = None
+            latest_error = None
+            if ok:
+                try:
+                    latest = npm_latest()
+                except Exception as exc:
+                    latest_error = str(exc)
+            self.after(0, lambda: self._status_result(ok, runtime_text, latest, latest_error))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _status_result(self, ok, runtime_text, latest, latest_error):
+        self.runtime_var.set(("✓ " if ok else "✗ ") + runtime_text)
+        if latest:
+            self.latest_var.set("Última versión npm: " + latest)
+            self.log_msg("Última versión publicada en npm: " + latest)
+        elif not ok:
+            self.latest_var.set("Última versión npm: no consultada (revisa Node.js/npm)")
+        else:
+            self.latest_var.set("Última versión npm: no disponible")
+            self.log_msg("No se pudo consultar npm: " + (latest_error or "error desconocido"))
+        self.status_checking = False
+        self.refresh_labels()
+        self.log_msg(runtime_text)
 
     def install(self):
         def work():
