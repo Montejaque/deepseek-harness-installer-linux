@@ -18,11 +18,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
-      - name: Validate Python syntax
-        run: python3 -m py_compile installer.py docs/generate_guide.py
+      - name: Validate Python syntax and npm registry lookup
+        run: |
+          python3 -m py_compile installer.py docs/generate_guide.py
           python3 - <<'PY'
           import json
-          from io import BytesIO
           from unittest.mock import patch
           import installer
           assert installer.version_tuple("v22.19.0") == (22, 19, 0)
