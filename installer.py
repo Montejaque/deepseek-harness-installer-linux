@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+import hashlib
+import tarfile
 import threading
 import queue
 import urllib.request
@@ -65,39 +67,129 @@ def candidate_bins():
     return unique
 
 
+NODE_INDEX_URL = "https://nodejs.org/dist/index.json"
+NODE_DIST_BASE = "https://nodejs.org/dist"
+
+
 def runtime_paths():
-    for directory in candidate_bins():
-        node, npm = directory / "node", directory / "npm"
-        if node.is_file() and os.access(node, os.X_OK) and npm.is_file() and os.access(npm, os.X_OK):
-            try:
-                result = subprocess.run([str(node), "--version"], capture_output=True,
-                                        text=True, timeout=12, check=False)
-                parsed = version_tuple(result.stdout.strip())
-                if result.returncode == 0 and parsed and parsed >= NODE_MIN:
-                    return str(node), str(npm), directory
-            except (OSError, subprocess.TimeoutExpired):
-                continue
+    directory = OPT / "runtime" / "node" / "bin"
+    node, npm = directory / "node", directory / "npm"
+    if node.is_file() and os.access(node, os.X_OK) and npm.is_file():
+        try:
+            result = subprocess.run([str(node), "--version"], capture_output=True,
+                                    text=True, timeout=12, check=False)
+            parsed = version_tuple(result.stdout.strip())
+            if result.returncode == 0 and parsed and parsed >= NODE_MIN:
+                return str(node), str(npm), directory
+        except (OSError, subprocess.TimeoutExpired):
+            pass
     return None, None, None
+
+
+def ensure_node_runtime(callback=None, progress=None):
+    node, npm, directory = runtime_paths()
+    if node and npm:
+        npm_result = subprocess.run([node, str(Path(npm).resolve()), "--version"],
+                                    capture_output=True, text=True, timeout=20, check=False)
+        if npm_result.returncode == 0:
+            emit(callback, "log", "Runtime privado disponible: Node.js " +
+                 subprocess.run([node, "--version"], capture_output=True, text=True,
+                                check=True).stdout.strip() + " · npm " + npm_result.stdout.strip())
+            return node, npm, directory
+
+    emit(callback, "log", "No hay un Node.js compatible en el espacio privado. Descargando Node.js 24 LTS automáticamente…")
+    if progress:
+        progress(12, "Consultando versiones oficiales de Node.js…")
+    request = urllib.request.Request(NODE_INDEX_URL, headers={"User-Agent": "DeepSeek-Harness-Installer/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        releases = json.loads(response.read().decode("utf-8"))
+    candidates = []
+    for release in releases:
+        version = version_tuple(release.get("version", ""))
+        if version and version >= NODE_MIN and version[0] == 24 and release.get("lts"):
+            candidates.append((version, release["version"]))
+    if not candidates:
+        raise RuntimeError("No se encontró una versión LTS compatible de Node.js 24 en nodejs.org.")
+    version, version_text = max(candidates, key=lambda item: item[0])
+    archive_name = "node-" + version_text + "-linux-x64.tar.xz"
+    archive_url = NODE_DIST_BASE + "/" + version_text + "/" + archive_name
+    sums_url = NODE_DIST_BASE + "/" + version_text + "/SHASUMS256.txt"
+    if progress:
+        progress(22, "Descargando Node.js " + version_text + "…")
+    emit(callback, "log", "Descargando " + archive_url)
+    OPT.mkdir(parents=True, exist_ok=True)
+    runtime_root = OPT / "runtime"
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    archive_path = runtime_root / archive_name
+    request = urllib.request.Request(archive_url, headers={"User-Agent": "DeepSeek-Harness-Installer/1.0"})
+    with urllib.request.urlopen(request, timeout=180) as response, archive_path.open("wb") as output:
+        shutil.copyfileobj(response, output)
+    request = urllib.request.Request(sums_url, headers={"User-Agent": "DeepSeek-Harness-Installer/1.0"})
+    with urllib.request.urlopen(request, timeout=45) as response:
+        sums_text = response.read().decode("utf-8")
+    expected = None
+    for line in sums_text.splitlines():
+        fields = line.split()
+        if len(fields) == 2 and fields[1].lstrip("*") == archive_name:
+            expected = fields[0].lower()
+            break
+    if not expected:
+        raise RuntimeError("Node.js se descargó, pero no se encontró su SHA256 oficial.")
+    digest = hashlib.sha256()
+    with archive_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != expected:
+        archive_path.unlink(missing_ok=True)
+        raise RuntimeError("La verificación SHA256 de Node.js ha fallado. Descarga cancelada.")
+    if progress:
+        progress(48, "Verificando e instalando Node.js…")
+    temp_dir = runtime_root / "extract"
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir()
+    with tarfile.open(str(archive_path), "r:xz") as bundle:
+        members = bundle.getmembers()
+        for member in members:
+            target = Path(member.name)
+            if target.is_absolute() or ".." in target.parts:
+                raise RuntimeError("El archivo oficial de Node.js contiene una ruta no segura.")
+        bundle.extractall(str(temp_dir))
+    extracted = temp_dir / ("node-" + version_text + "-linux-x64")
+    if not (extracted / "bin" / "node").is_file() or not (extracted / "bin" / "npm").is_file():
+        raise RuntimeError("El paquete descargado de Node.js está incompleto (faltan node o npm).")
+    final_dir = runtime_root / "node"
+    if final_dir.exists():
+        shutil.rmtree(final_dir)
+    extracted.rename(final_dir)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    archive_path.unlink(missing_ok=True)
+    node, npm, directory = runtime_paths()
+    if not node or not npm:
+        raise RuntimeError("Node.js se ha extraído, pero no supera la comprobación de versión.")
+    npm_result = subprocess.run([node, str(Path(npm).resolve()), "--version"],
+                                capture_output=True, text=True, timeout=30, check=False)
+    if npm_result.returncode:
+        raise RuntimeError("Node.js está instalado, pero npm no funciona: " + npm_result.stderr.strip())
+    emit(callback, "log", "Runtime privado verificado: Node.js " + version_text +
+         " · npm " + npm_result.stdout.strip())
+    if progress:
+        progress(58, "Node.js y npm preparados correctamente.")
+    return node, npm, directory
 
 
 def runtime_status():
     node, npm, directory = runtime_paths()
     if not node or not npm:
-        return False, ("DeepSeek Harness necesita Node.js 24.9.0 o posterior. "
-                        "Se ha encontrado una versión incompatible o no se ha podido localizar npm. "
-                        "Actualiza Node.js desde NVM y vuelve a comprobar.")
+        return True, "Node.js 24 LTS y npm se descargarán automáticamente al instalar; no necesitas NVM ni Node del sistema."
     try:
-        version = subprocess.run([node, "--version"], capture_output=True,
-                                 text=True, timeout=12, check=True).stdout.strip()
-        # Ejecutar el CLI de npm con el Node absoluto evita depender del PATH
-        # que GNOME entrega a procesos gráficos (NVM no siempre está cargado).
-        npm_cli = str(Path(npm).resolve())
-        npm_version = subprocess.run([node, npm_cli, "--version"],
-                                     capture_output=True, text=True, timeout=12,
-                                     check=True).stdout.strip()
-        return True, f"Node.js {version} · npm {npm_version} · {directory}"
+        npm_version = subprocess.run([node, str(Path(npm).resolve()), "--version"],
+                                     capture_output=True, text=True, timeout=20, check=True).stdout.strip()
+        node_version = subprocess.run([node, "--version"], capture_output=True,
+                                      text=True, timeout=12, check=True).stdout.strip()
+        return True, f"Runtime privado: Node.js {node_version} · npm {npm_version}"
     except Exception as exc:
-        return False, "No se pudo comprobar Node.js/npm: " + str(exc)
+        return False, "El runtime privado necesita reparación: " + str(exc)
 
 
 def latest_npm_version() -> str:
@@ -178,31 +270,13 @@ def write_launchers(callback=None):
     LAUNCHER.write_text(
         '#!/bin/sh\n'
         'APP_DIR="$HOME/.local/opt/deepseek-harness"\n'
-        'export PATH="$HOME/.local/bin:$PATH"\n'
-        '# Las aplicaciones abiertas desde GNOME no heredan necesariamente NVM.\n'
-        'if [ -s "$HOME/.nvm/nvm.sh" ]; then\n'
-        '  . "$HOME/.nvm/nvm.sh" --no-use\n'
-        '  if [ -f "$HOME/.nvm/alias/default" ]; then\n'
-        '    nvm use --silent default >/dev/null 2>&1 || true\n'
-        '  fi\n'
-        'fi\n'
-        '# Respaldo para instalaciones NVM sin alias default.\n'
-        'if ! command -v node >/dev/null 2>&1; then\n'
-        '  for NODE_BIN in "$HOME"/.nvm/versions/node/*/bin; do\n'
-        '    if [ -x "$NODE_BIN/node" ]; then PATH="$NODE_BIN:$PATH"; export PATH; break; fi\n'
-        '  done\n'
-        'fi\n'
-        'if ! command -v node >/dev/null 2>&1; then\n'
-        '  echo "ERROR: No se encuentra Node.js en PATH ni en NVM."\n'
+        'NODE_BIN="$APP_DIR/runtime/node/bin"\n'
+        'export PATH="$NODE_BIN:$HOME/.local/bin:$PATH"\n'
+        'if [ ! -x "$NODE_BIN/node" ] || [ ! -f "$NODE_BIN/npm" ]; then\n'
+        '  echo "No se encuentra el runtime privado de Node.js."\n'
+        '  echo "Abre DeepSeek Harness Installer y pulsa Instalar / actualizar para prepararlo automáticamente."\n'
         '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
         '  exit 127\n'
-        'fi\n'
-        'if ! node -e \'const [a,b]=process.versions.node.split(".").map(Number); if (a < 24 || (a === 24 && b < 9)) process.exit(1)\' >/dev/null 2>&1; then\n'
-        '  echo "ERROR: DeepSeek Harness necesita Node.js 24.9.0 o posterior."\n'
-        '  echo "La versión detectada es: $(node --version)"\n'
-        '  echo "Actualiza Node.js con NVM (por ejemplo: nvm install 24) y vuelve a abrir la aplicación."\n'
-        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
-        '  exit 1\n'
         'fi\n'
         'if [ ! -x "$APP_DIR/node_modules/.bin/dsh" ]; then\n'
         '  echo "No se encuentra el ejecutable dsh. Abre DeepSeek Harness Installer y pulsa Instalar / actualizar."\n'
@@ -420,12 +494,10 @@ class Installer(tk.Tk):
 
     def install(self):
         def worker():
-            ok, detail = runtime_status()
-            self.events.put(("status", ("✓ " if ok else "✗ ") + detail))
-            if not ok:
-                raise RuntimeError(detail)
-            node, npm, _ = runtime_paths()
-            self.progress_update(5, "Consultando versión publicada en npm…")
+            self.progress_update(5, "Preparando Node.js y npm…")
+            node, npm, _ = ensure_node_runtime(self._worker_event, self.progress_update)
+            self.events.put(("status", "✓ Runtime privado listo: Node.js 24 LTS y npm"))
+            self.progress_update(62, "Consultando versión publicada en npm…")
             latest = latest_npm_version()
             self.log("Versión publicada en npm: " + latest)
             current = installed_version()
@@ -464,9 +536,11 @@ class Installer(tk.Tk):
 
     def repair(self):
         def worker():
+            self.progress_update(10, "Comprobando Node.js y npm…")
+            ensure_node_runtime(self._worker_event, self.progress_update)
             if not (OPT / "node_modules/.bin/dsh").exists():
                 raise RuntimeError("DeepSeek Harness no está instalado. Usa primero Instalar / actualizar.")
-            self.progress_update(30, "Recreando lanzador e icono…")
+            self.progress_update(75, "Recreando lanzador e icono…")
             write_launchers(self._worker_event)
             self.progress_update(100, "Accesos reparados.")
             self.events.put(("info", "Se han reparado el comando, el icono y el acceso al menú de aplicaciones."))
