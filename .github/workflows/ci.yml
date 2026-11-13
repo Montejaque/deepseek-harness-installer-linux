@@ -107,13 +107,13 @@ jobs:
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.1
+          tag_name: v0.1.2
           target_commitish: ${{ github.sha }}
-          name: DeepSeek Harness Installer v0.1.1
+          name: DeepSeek Harness Installer v0.1.2
           body: |
-            Primera versión de pruebas del instalador AppImage para Linux x86_64.
+            Versión preliminar v0.1.2 del instalador AppImage para Linux x86_64. Tag nuevo e independiente; no reutiliza versiones anteriores.
 
-            - Construida sobre Ubuntu 20.04 (glibc 2.31).
+            - Construida sobre Ubuntu 20.04 (glibc 2.31).\n            - Prueba automatizada confirma que la ventana real del instalador aparece.
             - Se comprueba que la ventana real del instalador aparece en CI.
             - Instalación por usuario, sin permisos root.
             - Requiere Node.js compatible y conexión a Internet para instalar `@deepseek-ai/dsh`.
