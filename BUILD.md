@@ -1,18 +1,28 @@
 # Construcción de la AppImage
 
-## Entorno
+La AppImage se compila en Ubuntu 20.04 (glibc 2.31) para mantener compatibilidad con el Ubuntu 20.04 del entorno de Punto Vuela.
 
-La construcción está pensada para Linux x86_64 y debe ejecutarse en Ubuntu 20.04 para maximizar la compatibilidad con glibc 2.31. Requiere Python 3, Tkinter, `appimagetool` y FUSE en el sistema anfitrión donde se ejecute la AppImage.
+## Requisitos para compilar localmente
 
-## Construcción local
+- Python 3 y Tkinter
+- PyInstaller 5.13.2
+- appimagetool de AppImageKit
 
 ```bash
-python3 -m py_compile installer.py
+python3 -m pip install 'PyInstaller==5.13.2'
+# Instala/descarga appimagetool en PATH
+chmod +x build.sh
 ./build.sh
 ```
 
-El resultado se genera en `dist/DeepSeek-Harness-Installer-x86_64.AppImage`.
+El resultado es `dist/DeepSeek-Harness-Installer-x86_64.AppImage`.
 
-## Nota importante sobre dependencias
+## Portabilidad
 
-Esta primera versión es un prototipo funcional de interfaz y gestión npm: la AppImage depende de Python 3 y Tkinter del sistema anfitrión. Para una distribución autocontenida al estilo de los instaladores anteriores, la siguiente iteración debe incorporar un runtime Python/Tk compatible dentro del AppDir y validar AppImage en Ubuntu 20.04 sin dependencias preinstaladas. No se debe anunciar como completamente autocontenida hasta superar esa prueba.
+PyInstaller empaqueta el intérprete Python, Tk/Tcl y las dependencias de la interfaz dentro del AppDir. La construcción debe realizarse en Ubuntu 20.04 o una base compatible; no compiles en una distribución más nueva si necesitas glibc 2.31.
+
+La AppImage no contiene DeepSeek Harness: descarga el paquete oficial `@deepseek-ai/dsh` desde npm cuando el usuario pulsa Instalar / actualizar. Se necesita Node.js compatible y conexión a Internet en el equipo de destino.
+
+## CI y Releases
+
+Cada push a `main` y cada etiqueta `v*` ejecutan validación y compilación. Los pushes generan un artefacto descargable desde GitHub Actions. Al crear una Release basada en una etiqueta `v*`, el workflow adjunta la AppImage y su SHA256 automáticamente.
