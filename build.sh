@@ -18,6 +18,7 @@ command -v appimagetool >/dev/null 2>&1 || {
 
 rm -rf "$DIST/pyinstaller" "$DIST/work" "$APPDIR"
 pyinstaller --clean --noconfirm --onedir --name DeepSeekHarnessInstaller \
+  --hidden-import=ipaddress \
   --distpath "$DIST/pyinstaller" --workpath "$DIST/work" installer.py
 
 mkdir -p "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/scalable/apps"
@@ -51,4 +52,6 @@ cp "$APPDIR/deepseek-harness-installer.svg" "$APPDIR/.DirIcon"
 cp "$APPDIR/deepseek-harness-installer.svg" "$APPDIR/usr/share/icons/hicolor/scalable/apps/deepseek-harness-installer.svg"
 
 ARCH=x86_64 APPIMAGE_EXTRACT_AND_RUN=1 appimagetool "$APPDIR" "$DIST/DeepSeek-Harness-Installer-x86_64.AppImage"
+# Smoke-test the packaged executable without requiring a graphical display.
+APPIMAGE_EXTRACT_AND_RUN=1 "$DIST/DeepSeek-Harness-Installer-x86_64.AppImage" --smoke-test
 sha256sum "$DIST/DeepSeek-Harness-Installer-x86_64.AppImage" > "$DIST/SHA256SUMS"
