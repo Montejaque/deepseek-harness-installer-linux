@@ -43,7 +43,7 @@ story = [Spacer(1,3*mm), P("GUÍA RÁPIDA  /  LINUX x86_64","Kicker"),
     Spacer(1,5*mm)]
 hero = Table([[P("GESTOR GRÁFICO PARA LINUX","Labelx")],
     [P("Una herramienta sencilla para instalar, mantener y reparar DeepSeek Harness.","Whitex")],
-    [P("La AppImage contiene el gestor. El paquete oficial se descarga desde el registro npm cuando se solicita la instalación.","Smallx")]], colWidths=[cw])
+    [P("La AppImage contiene el gestor. Node.js 24 LTS y npm se descargan automáticamente al espacio privado del usuario; el paquete oficial se obtiene desde npm.","Smallx")]], colWidths=[cw])
 hero.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),INK),("LEFTPADDING",(0,0),(-1,-1),13),
     ("RIGHTPADDING",(0,0),(-1,-1),13),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
 story += [hero, Spacer(1,4*mm)]
@@ -57,7 +57,7 @@ features.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),HexColor("#FFF8D8")),
 story += [features, P("Puesta en marcha","H2x")]
 steps = [("01","Descarga la AppImage","Obtén <b>DeepSeek-Harness-Installer-x86_64.AppImage</b> desde Releases."),
     ("02","Permite su ejecución","En la carpeta de descarga, ejecuta los comandos indicados."),
-    ("03","Instala Harness","Abre el gestor y pulsa <b>Instalar / actualizar</b>. Se requiere Node.js compatible y conexión a Internet.")]
+    ("03","Instala Harness","Abre el gestor y pulsa <b>Instalar / actualizar</b>. Node.js 24 LTS y npm se preparan automáticamente. Solo necesitas conexión a Internet.")]
 st = Table([[P(n,"Whitex"),P("<b>"+title+"</b><br/>"+desc,"Smallx")] for n,title,desc in steps],
     colWidths=[16*mm,cw-16*mm])
 st.setStyle(TableStyle([("BACKGROUND",(0,0),(0,-1),YELLOW),("BACKGROUND",(1,0),(1,-1),colors.white),
@@ -70,14 +70,14 @@ cmd.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),PANEL),("BOX",(0,0),(-1,-1)
     ("LEFTPADDING",(0,0),(-1,-1),10),("RIGHTPADDING",(0,0),(-1,-1),10),
     ("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
 story += [cmd, Spacer(1,2*mm),
-    P("<b>Requisitos:</b> Linux x86_64, entorno gráfico, Node.js 22.19.0 o superior (o 24+), npm y conexión a Internet. No necesita sudo.","Smallx"),
+    P("<b>Requisitos:</b> Linux x86_64, entorno gráfico compatible con AppImage y conexión a Internet. No necesitas Node.js, npm, NVM ni permisos sudo.","Smallx"),
     PageBreak(), Spacer(1,2*mm), P("USO Y CONFIGURACIÓN","Kicker"), P("Todo bajo control.","Big"),
     P("Las operaciones habituales para mantener DeepSeek Harness actualizado y accesible.","Subx"),
     P("Funciones del gestor","H2x")]
 grid = Table([[P("<b>Instalar / actualizar</b><br/>Consulta la versión publicada en npm e instala el paquete oficial cuando sea necesario.","Smallx"),
     P("<b>Comprobar versiones</b><br/>Muestra Node.js, npm, la versión instalada y la última versión del registro npm.","Smallx")],
-    [P("<b>Reparar acceso</b><br/>Vuelve a crear el comando, el icono y el acceso del menú GNOME.","Smallx"),
-    P("<b>Desinstalar</b><br/>Elimina la copia gestionada y sus accesos, sin borrar ~/.dsh.","Smallx")]], colWidths=[cw/2]*2)
+    [P("<b>Reparar acceso</b><br/>Comprueba el runtime privado y vuelve a crear el comando, el icono y el acceso del menú GNOME.","Smallx"),
+    P("<b>Desinstalar</b><br/>Elimina la aplicación, el runtime privado y sus accesos, sin borrar ~/.dsh.","Smallx")]], colWidths=[cw/2]*2)
 grid.setStyle(TableStyle([("BOX",(0,0),(-1,-1),0.6,LINE),("INNERGRID",(0,0),(-1,-1),0.6,LINE),
     ("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),10),
     ("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),9),("BOTTOMPADDING",(0,0),(-1,-1),9)]))
@@ -96,7 +96,19 @@ safe = Table([[P("<b>Actualizar:</b> instala la versión publicada del paquete. 
 safe.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),HexColor("#FFF8D8")),
     ("BOX",(0,0),(-1,-1),0.6,HexColor("#E8D98C")),("LEFTPADDING",(0,0),(-1,-1),10),
     ("RIGHTPADDING",(0,0),(-1,-1),10),("TOPPADDING",(0,0),(-1,-1),9),("BOTTOMPADDING",(0,0),(-1,-1),9)]))
-story += [safe, P("Desarrollador y contacto","H2x")]
+story += [safe, P("Inicio desde el menú y solución de problemas","H2x")]
+troubleshooting = [
+    [P("<b>El icono no abre la aplicación</b>","Smallx"), P("Abre el instalador y pulsa <b>Instalar / actualizar</b>. Comprueba también que el runtime privado existe en ~/.local/opt/deepseek-harness/runtime/node.","Smallx")],
+    [P("<b>Puerto 3080 ocupado</b>","Smallx"), P("El lanzador comprueba el puerto por TCP. Si ya hay una instancia escuchando, abre http://127.0.0.1:3080/ y evita arrancar un servidor duplicado.","Smallx")],
+    [P("<b>El servidor no arranca</b>","Smallx"), P("Consulta ~/.local/state/deepseek-harness/launcher.log y los diagnósticos de ~/.dsh/logs/. Para comprobar el puerto: ss -ltnp | grep ':3080'. Identifica el proceso antes de detenerlo.","Smallx")],
+    [P("<b>Conservación de datos</b>","Smallx"), P("Los perfiles, sesiones y configuración permanecen en ~/.dsh. La actualización y la desinstalación no eliminan esa carpeta.","Smallx")]
+]
+tt = Table(troubleshooting, colWidths=[48*mm,cw-48*mm])
+tt.setStyle(TableStyle([("BOX",(0,0),(-1,-1),0.6,LINE),("INNERGRID",(0,0),(-1,-1),0.5,LINE),
+    ("BACKGROUND",(0,0),(0,-1),PANEL),("VALIGN",(0,0),(-1,-1),"TOP"),
+    ("LEFTPADDING",(0,0),(-1,-1),8),("RIGHTPADDING",(0,0),(-1,-1),8),
+    ("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]))
+story += [tt, P("Desarrollador y contacto","H2x")]
 contact = Table([[P("<b>DESARROLLADOR</b><br/>Francisco Javier Gallego Orellana<br/><br/><b>PUNTO VUELA MONTEJAQUE</b><br/>Avenida Andalucía, 48<br/>29360 Montejaque (Málaga)","Smallx"),
     P("<b>CONTACTO</b><br/>Teléfono: 633 402 959<br/>Correo: montejaque@puntosvuela.es<br/>Web: puntosvuela.es/centros/montejaque","Smallx")]],colWidths=[cw/2]*2)
 contact.setStyle(TableStyle([("BOX",(0,0),(-1,-1),0.6,LINE),("LINEBEFORE",(1,0),(1,0),0.6,LINE),
