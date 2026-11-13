@@ -1,23 +1,58 @@
-name: CI
+name: CI and AppImage
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
       - name: Validate Python syntax
-        run: python -m py_compile installer.py
-      - name: Shell syntax
+        run: python3 -m py_compile installer.py
+      - name: Validate build script
         run: bash -n build.sh
+
+  build-appimage:
+    needs: validate
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+    steps:
+      - name: Install build dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y python3 python3-pip python3-tk wget ca-certificates file
+          python3 -m pip install --no-cache-dir 'PyInstaller==5.13.2'
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
+          chmod +x /usr/local/bin/appimagetool
+      - uses: actions/checkout@v4
+      - name: Build AppImage on Ubuntu 20.04
+        run: |
+          chmod +x build.sh
+          ./build.sh
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeepSeek-Harness-Installer-x86_64
+          path: |
+            dist/DeepSeek-Harness-Installer-x86_64.AppImage
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/DeepSeek-Harness-Installer-x86_64.AppImage
+            dist/SHA256SUMS
+          generate_release_notes: true
