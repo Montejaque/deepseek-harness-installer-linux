@@ -271,20 +271,34 @@ def write_launchers(callback=None):
         '#!/bin/sh\n'
         'APP_DIR="$HOME/.local/opt/deepseek-harness"\n'
         'NODE_BIN="$APP_DIR/runtime/node/bin"\n'
-        'export PATH="$NODE_BIN:$HOME/.local/bin:$PATH"\n'
+        'STATE_DIR="$HOME/.local/state/deepseek-harness"\n'
+        'LOG_FILE="$STATE_DIR/launcher.log"\n'
+        'export PATH="$NODE_BIN:$HOME/.local/bin:/usr/bin:/bin"\n'
+        'mkdir -p "$STATE_DIR" || exit 1\n'
         'if [ ! -x "$NODE_BIN/node" ] || [ ! -f "$NODE_BIN/npm" ]; then\n'
-        '  echo "No se encuentra el runtime privado de Node.js."\n'
-        '  echo "Abre DeepSeek Harness Installer y pulsa Instalar / actualizar para prepararlo automáticamente."\n'
-        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
+        '  MESSAGE="No se encuentra el Node.js privado. Abre DeepSeek Harness Installer y pulsa Instalar / actualizar."\n'
+        '  if command -v zenity >/dev/null 2>&1; then zenity --error --title="DeepSeek Harness" --text="$MESSAGE"; else echo "$MESSAGE" >&2; fi\n'
         '  exit 127\n'
         'fi\n'
         'if [ ! -x "$APP_DIR/node_modules/.bin/dsh" ]; then\n'
-        '  echo "No se encuentra el ejecutable dsh. Abre DeepSeek Harness Installer y pulsa Instalar / actualizar."\n'
-        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
+        '  MESSAGE="DeepSeek Harness no está instalado correctamente. Abre el instalador y pulsa Instalar / actualizar."\n'
+        '  if command -v zenity >/dev/null 2>&1; then zenity --error --title="DeepSeek Harness" --text="$MESSAGE"; else echo "$MESSAGE" >&2; fi\n'
         '  exit 127\n'
         'fi\n'
+        'if command -v curl >/dev/null 2>&1 && curl -fsS --max-time 1 http://127.0.0.1:3080/ >/dev/null 2>&1; then\n'
+        '  xdg-open http://127.0.0.1:3080/ >/dev/null 2>&1 &\n'
+        '  exit 0\n'
+        'fi\n'
         'cd "$HOME" || exit 1\n'
-        'exec "$APP_DIR/node_modules/.bin/dsh" web "$@"\n',
+        'nohup "$APP_DIR/node_modules/.bin/dsh" web "$@" >>"$LOG_FILE" 2>&1 </dev/null &\n'
+        'SERVER_PID=$!\n'
+        'sleep 4\n'
+        'if ! kill -0 "$SERVER_PID" 2>/dev/null; then\n'
+        '  LAST_ERROR="$(tail -n 18 "$LOG_FILE" 2>/dev/null | tail -n 12)"\n'
+        '  MESSAGE="DeepSeek Harness no ha podido iniciarse.\n\nRegistro: $LOG_FILE\n\n$LAST_ERROR"\n'
+        '  if command -v zenity >/dev/null 2>&1; then zenity --error --title="Error al abrir DeepSeek Harness" --width=560 --text="$MESSAGE"; else echo "$MESSAGE" >&2; fi\n'
+        'fi\n'
+        'exit 0\n',
         encoding="utf-8")
     LAUNCHER.chmod(0o755)
     desktop_text = (
@@ -293,7 +307,7 @@ def write_launchers(callback=None):
         "GenericName=Entorno de agentes de IA\nGenericName[es]=Entorno de agentes de IA\n"
         "Comment=Entorno web de agentes de DeepSeek\n"
         f'Exec="{LAUNCHER}"\nTryExec={LAUNCHER}\nIcon={ICON}\n'
-        "Terminal=true\nStartupNotify=true\n"
+        "Terminal=false\nStartupNotify=true\n"
         "NoDisplay=false\nHidden=false\nCategories=Development;Utility;\n"
         "Keywords=deepseek;agents;ia;terminal;desarrollo;\n"
     )
