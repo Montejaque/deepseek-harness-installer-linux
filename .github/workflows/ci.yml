@@ -22,55 +22,57 @@ jobs:
   build-appimage:
     needs: validate
     runs-on: ubuntu-22.04
+    # Build against Ubuntu 20.04 / glibc 2.31, the oldest supported target.
+    container:
+      image: ubuntu:20.04
     steps:
       - uses: actions/checkout@v5
       - name: Install build dependencies
         run: |
           set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y python3-tk tcl8.6 tk8.6 xvfb xauth wget ca-certificates file
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y python3 python3-pip python3-tk tcl8.6 tk8.6 xvfb xauth xdotool wget ca-certificates file
           python3 -m pip install --user --no-cache-dir 'PyInstaller==5.13.2'
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O "$RUNNER_TEMP/appimagetool"
           chmod +x "$RUNNER_TEMP/appimagetool"
-          sudo mv "$RUNNER_TEMP/appimagetool" /usr/local/bin/appimagetool
-      - name: Build AppImage on Ubuntu 22.04
+          mv "$RUNNER_TEMP/appimagetool" /usr/local/bin/appimagetool
+      - name: Build AppImage on Ubuntu 20.04 (glibc 2.31)
         run: |
           set -euxo pipefail
           chmod +x build.sh
           ./build.sh
-      - name: Test real graphical startup (Tkinter)
+      - name: Verify the actual installer window opens
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/check-window.py" <<'PY'
-          import tkinter as tk
-          import time
-          root = tk.Tk()
-          root.title("DeepSeek Harness Installer CI")
-          root.geometry("300x120")
-          root.update_idletasks()
-          root.update()
-          assert root.winfo_exists() == 1
-          assert root.winfo_viewable() == 1
-          print("TK_WINDOW_VISIBLE_OK", flush=True)
-          root.destroy()
-          PY
-          xvfb-run -a python3 "$RUNNER_TEMP/check-window.py"
-          set +e
-          APPIMAGE_EXTRACT_AND_RUN=1 timeout --signal=TERM --kill-after=3s 10s xvfb-run -a ./dist/DeepSeek-Harness-Installer-x86_64.AppImage > gui-smoke.log 2>&1
-          status=$?
-          set -e
-          cat gui-smoke.log
-          if [ "$status" -ne 124 ] && [ "$status" -ne 137 ]; then
-            echo "El instalador terminó inesperadamente (código $status)." >&2
+          APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a bash -c '
+            set -euo pipefail
+            log="$RUNNER_TEMP/deepseek-gui.log"
+            ./dist/DeepSeek-Harness-Installer-x86_64.AppImage >"$log" 2>&1 &
+            app_pid=$!
+            cleanup() {
+              kill "$app_pid" 2>/dev/null || true
+              wait "$app_pid" 2>/dev/null || true
+            }
+            trap cleanup EXIT
+            for attempt in $(seq 1 20); do
+              if xdotool search --onlyvisible --name "DeepSeek Harness" >/dev/null 2>&1; then
+                echo "ACTUAL_INSTALLER_WINDOW_VISIBLE_OK"
+                exit 0
+              fi
+              if ! kill -0 "$app_pid" 2>/dev/null; then
+                cat "$log"
+                echo "El instalador se cerró antes de mostrar su ventana." >&2
+                exit 1
+              fi
+              sleep 1
+            done
+            cat "$log"
+            echo "No apareció la ventana real del instalador en 20 segundos." >&2
             exit 1
-          fi
-          if grep -Eiq "TclError|no display name|couldn't connect to display|can't find package|init\.tcl|Traceback|ModuleNotFoundError" gui-smoke.log; then
-            echo "La interfaz gráfica ha mostrado errores de inicio." >&2
-            exit 1
-          fi
-          echo "La aplicación permaneció ejecutándose durante la prueba gráfica."
-      - name: Verify artifact and architecture
+          '
+      - name: Verify artifact, architecture and checksum
         run: |
           set -euxo pipefail
           test -s dist/DeepSeek-Harness-Installer-x86_64.AppImage
@@ -107,9 +109,10 @@ jobs:
           body: |
             Primera versión de pruebas del instalador AppImage para Linux x86_64.
 
+            - Construida sobre Ubuntu 20.04 (glibc 2.31).
+            - Se comprueba que la ventana real del instalador aparece en CI.
             - Instalación por usuario, sin permisos root.
             - Requiere Node.js compatible y conexión a Internet para instalar `@deepseek-ai/dsh`.
-            - Compilación y checksum verificados por GitHub Actions.
             - Versión preliminar para pruebas; no es una versión estable.
           prerelease: true
           files: |
