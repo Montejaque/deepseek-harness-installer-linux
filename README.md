@@ -1,53 +1,73 @@
-# DeepSeek Harness Installer for Linux
+# DeepSeek Harness Installer & Updater — Punto Vuela Montejaque
 
-**Punto Vuela Montejaque · Instalador independiente para Linux**
+Gestor gráfico para instalar, actualizar, comprobar, reparar y desinstalar **DeepSeek Harness** en Linux x86_64. Se distribuye como AppImage y realiza la instalación dentro del perfil del usuario, sin permisos root.
 
-Instalador gráfico para gestionar [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) en Linux sin permisos de administrador. Se distribuye como AppImage y descarga el paquete oficial `@deepseek-ai/dsh` de npm durante la instalación.
+## Descargar
 
-> DeepSeek Harness está en Developer Preview. Este proyecto es independiente y no está afiliado, respaldado ni patrocinado por DeepSeek.
+- [Última versión publicada](https://github.com/Montejaque/deepseek-harness-installer-linux/releases/latest)
+- [Todas las versiones](https://github.com/Montejaque/deepseek-harness-installer-linux/releases)
+- [Compilaciones de GitHub Actions](https://github.com/Montejaque/deepseek-harness-installer-linux/actions)
+
+Descarga \`DeepSeek-Harness-Installer-x86_64.AppImage\`, permite su ejecución y abre el gestor:
+
+\`\`\`bash
+chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
+./DeepSeek-Harness-Installer-x86_64.AppImage
+\`\`\`
 
 ## Funciones
 
-- Interfaz gráfica Python/Tkinter empaquetada con PyInstaller.
-- Instalar, actualizar, comprobar, reparar lanzadores y desinstalar.
-- Descarga del paquete oficial npm; no redistribuye ni modifica DeepSeek Harness.
-- Instalación por usuario, sin sudo, apt, Docker ni escritura en directorios del sistema.
-- Acceso directo de escritorio y comando local.
-- Conserva los datos de `~/.dsh` al actualizar y desinstalar.
+- Consulta la última versión publicada de \`@deepseek-ai/dsh\` directamente en el registro oficial npm.
+- Detecta Node.js y npm en el PATH, NVM y gestores habituales de versiones, incluso cuando la AppImage se abre desde GNOME.
+- Instala y actualiza el paquete oficial en el perfil del usuario.
+- Evita reinstalar si ya está instalada la última versión.
+- Muestra el registro de npm en directo y el progreso de las operaciones.
+- Crea el comando \`deepseek-harness\`, el icono SVG y el acceso al menú GNOME.
+- Repara los accesos de terminal, icono y menú.
+- Incluye una guía PDF de uso, accesible desde el botón **Ver guía de uso**.
+- Desinstala solo la copia gestionada y conserva \`~/.dsh\`.
 
-## Requisitos del equipo
+## Rutas de instalación
+
+| Elemento | Ubicación |
+|---|---|
+| Aplicación y dependencias | \`~/.local/opt/deepseek-harness\` |
+| Comando | \`~/.local/bin/deepseek-harness\` |
+| Menú GNOME | \`~/.local/share/applications/deepseek-harness.desktop\` |
+| Icono | \`~/.local/share/icons/hicolor/scalable/apps/deepseek-harness.svg\` |
+| Perfiles, sesiones y configuración | \`~/.dsh\` (se conserva) |
+
+## Requisitos
 
 - Linux x86_64.
-- Node.js compatible con la versión publicada de `@deepseek-ai/dsh` y npm.
-- Conexión a Internet para instalar o actualizar.
-- Para ejecutar AppImage en sistemas sin FUSE disponible, prueba `--appimage-extract-and-run`.
+- Node.js 22.19.0 o superior, o Node.js 24+.
+- npm compatible.
+- Conexión a Internet para consultar npm e instalar el paquete.
+- Entorno gráfico compatible con AppImage.
 
-Comprueba siempre el requisito de Node.js en la [documentación oficial](https://github.com/deepseek-ai/deepseek-harness).
+El instalador no ejecuta \`sudo\`, no instala paquetes del sistema y no modifica \`/usr\`, \`/opt\` global ni la configuración del sistema.
 
-## Descarga y uso
+## Guía de uso
 
-Descarga `DeepSeek-Harness-Installer-x86_64.AppImage` desde [Releases](https://github.com/Montejaque/deepseek-harness-installer-linux/releases) o desde el artefacto de la última ejecución de [GitHub Actions](https://github.com/Montejaque/deepseek-harness-installer-linux/actions).
+La guía PDF se abre desde el botón **Ver guía de uso** de la aplicación. También se genera durante la compilación en \`docs/generate_guide.py\`.
 
-```bash
-chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
-./DeepSeek-Harness-Installer-x86_64.AppImage
-```
+## Compilación
 
-## Ubicaciones
+Consulta [BUILD.md](BUILD.md). GitHub Actions compila sobre Ubuntu 20.04 (glibc 2.31), comprueba que la ventana real se muestra y publica un Release con AppImage y SHA256.
 
-- Aplicación: `~/.local/opt/deepseek-harness/`
-- Ejecutables: `~/.local/bin/`
-- Acceso de escritorio: `~/.local/share/applications/`
-- Datos de DeepSeek Harness: `~/.dsh/` (no se elimina al actualizar ni al desinstalar).
+## Fuente oficial
 
-## Desarrollo
+- Paquete npm: [@deepseek-ai/dsh](https://www.npmjs.com/package/@deepseek-ai/dsh)
+- Registro npm: [registry.npmjs.org](https://registry.npmjs.org/)
 
-Consulta [BUILD.md](BUILD.md). GitHub Actions compila dentro de Ubuntu 20.04 (glibc 2.31) y comprueba que aparece la ventana real del instalador antes de publicar el artefacto. Cada push a `main` publica una compilación preliminar; no se considera estable hasta superar también las pruebas de instalación y ejecución del paquete npm en un equipo de destino.
+## Autoría
 
-## Seguridad
+**Desarrollador:** Francisco Javier Gallego Orellana  
+**Centro:** Punto Vuela Montejaque  
+Avenida Andalucía, 48 · 29360 Montejaque (Málaga)  
+Teléfono: 633 402 959  
+Correo: montejaque@puntosvuela.es  
+Web: https://puntosvuela.es/centros/montejaque
 
-DeepSeek Harness puede acceder a archivos y ejecutar herramientas en el espacio de trabajo. Revisa la documentación oficial y protege tus claves API. Este instalador no solicita ni transmite credenciales.
-
-## Licencia
-
-El instalador se publica bajo MIT. DeepSeek Harness y sus dependencias conservan sus propias licencias.
+**Identidad visual:** negro \`#171717\` y amarillo \`#F3D54E\`.  
+**Licencia:** MIT.
