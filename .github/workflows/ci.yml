@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          sudo apt-get install -y python3-tk wget ca-certificates file
+          sudo apt-get install -y python3-tk tcl8.6 tk8.6 xvfb xauth wget ca-certificates file
           python3 -m pip install --user --no-cache-dir 'PyInstaller==5.13.2'
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O "$RUNNER_TEMP/appimagetool"
@@ -39,6 +39,21 @@ jobs:
           set -euxo pipefail
           chmod +x build.sh
           ./build.sh
+      - name: Test real graphical startup (Tkinter)
+        run: |
+          set -u
+          APPIMAGE_EXTRACT_AND_RUN=1 timeout --signal=TERM 10s xvfb-run -a ./dist/DeepSeek-Harness-Installer-x86_64.AppImage > gui-smoke.log 2>&1
+          status=$?
+          cat gui-smoke.log
+          if [ "$status" -ne 124 ] && [ "$status" -ne 137 ]; then
+            echo "La ventana del instalador no permaneció abierta (código $status)." >&2
+            exit 1
+          fi
+          if grep -Eiq "TclError|no display name|couldn't connect to display|can't find package|init\.tcl|Error" gui-smoke.log; then
+            echo "La interfaz gráfica ha mostrado errores de inicio." >&2
+            exit 1
+          fi
+          echo "La interfaz Tkinter ha arrancado y ha permanecido abierta durante 10 segundos."
       - name: Verify artifact and architecture
         run: |
           set -euxo pipefail
