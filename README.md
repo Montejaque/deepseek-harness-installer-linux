@@ -18,7 +18,8 @@ chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
 ## Funciones
 
 - Consulta la última versión publicada de \`@deepseek-ai/dsh\` directamente en el registro oficial npm.
-- Detecta Node.js y npm en el PATH, NVM y gestores habituales de versiones, incluso cuando la AppImage se abre desde GNOME.
+- Descarga y configura automáticamente Node.js 24 LTS y npm en un directorio privado del usuario cuando hacen falta; no requiere NVM ni Node.js del sistema.
+- El lanzador utiliza exclusivamente el runtime privado para evitar conflictos con versiones antiguas de Node.js.
 - Instala y actualiza el paquete oficial en el perfil del usuario.
 - Evita reinstalar si ya está instalada la última versión.
 - Muestra el registro de npm en directo y el progreso de las operaciones.
@@ -40,7 +41,7 @@ chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
 ## Requisitos
 
 - Linux x86_64.
-- Node.js 22.19.0 o superior, o Node.js 24+.
+- Conexión a Internet durante la primera instalación para descargar Node.js 24 LTS y DeepSeek Harness.
 - npm compatible.
 - Conexión a Internet para consultar npm e instalar el paquete.
 - Entorno gráfico compatible con AppImage.
