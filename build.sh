@@ -22,6 +22,32 @@ pyinstaller --clean --noconfirm --onedir --name DeepSeekHarnessInstaller \
   --hidden-import=ipaddress \
   --distpath "$DIST/pyinstaller" --workpath "$DIST/work" installer.py
 
+# PyInstaller 5.13's bootstrap imports urllib.parse before its PYZ importer is
+# active. Ensure ipaddress is also present in base_library.zip (not only PYZ).
+BASE_LIBRARY="$(find "$DIST/pyinstaller/DeepSeekHarnessInstaller" -name base_library.zip -print -quit)"
+if [[ -z "$BASE_LIBRARY" ]]; then
+  echo "No se ha encontrado base_library.zip en el paquete PyInstaller." >&2
+  exit 1
+fi
+python3 - "$BASE_LIBRARY" <<'PY'
+import pathlib
+import sys
+import sysconfig
+import zipfile
+
+archive = pathlib.Path(sys.argv[1])
+module = pathlib.Path(sysconfig.get_path("stdlib")) / "ipaddress.py"
+if not module.is_file():
+    raise SystemExit(f"No se encuentra el módulo estándar: {module}")
+with zipfile.ZipFile(archive, "a", compression=zipfile.ZIP_DEFLATED) as bundle:
+    if "ipaddress.py" not in bundle.namelist():
+        bundle.write(module, "ipaddress.py")
+with zipfile.ZipFile(archive) as bundle:
+    if "ipaddress.py" not in bundle.namelist():
+        raise SystemExit("ipaddress.py no se ha incluido en base_library.zip")
+print(f"ipaddress añadido a {archive}")
+PY
+
 mkdir -p "$APPDIR/usr/lib" "$APPDIR/usr/share/applications" "$APPDIR/usr/share/icons/hicolor/scalable/apps"
 cp -a "$DIST/pyinstaller/DeepSeekHarnessInstaller" "$APPDIR/usr/lib/"
 cat > "$APPDIR/AppRun" <<'EOF'
