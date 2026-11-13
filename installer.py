@@ -431,9 +431,17 @@ class Installer(tk.Tk):
             self.progress_update(90, "Creando acceso al menú e icono…")
             write_launchers(self._worker_event)
             self.progress_update(100, "Instalación verificada.")
-            self.events.put(("info", f"DeepSeek Harness {verified} está instalado.\n\n"
-                f"Comando: {LAUNCHER}\nMenú: {DESKTOP}\n\n"
-                "Los datos de ~/.dsh se conservan."))
+            self.events.put(("info",
+                "¡INSTALACIÓN COMPLETADA!\n\n"
+                f"DeepSeek Harness {verified} ya está instalado y listo para utilizarse.\n\n"
+                "¿CÓMO ABRIRLO?\n"
+                "1. Pulsa «Aceptar» para cerrar este aviso.\n"
+                "2. Abre el menú «Aplicaciones» de Ubuntu.\n"
+                "3. Busca «DeepSeek Harness» y selecciónalo.\n\n"
+                "No necesitas volver a ejecutar este instalador para abrir la aplicación.\n\n"
+                "TUS DATOS\n"
+                "Tus perfiles, sesiones y configuración se mantienen guardados. "
+                "La instalación no ha borrado la carpeta ~/.dsh."))
         self._start("Instalando / actualizando DeepSeek Harness…", worker)
 
     def _worker_event(self, kind, value):
