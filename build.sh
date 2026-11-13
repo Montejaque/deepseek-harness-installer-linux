@@ -7,6 +7,7 @@ APPDIR="$DIST/DeepSeekHarnessInstaller.AppDir"
 mkdir -p "$DIST"
 
 python3 -m py_compile installer.py
+python3 docs/generate_guide.py "$DIST/Guia-DeepSeek-Harness-Punto-Vuela-Montejaque.pdf"
 command -v pyinstaller >/dev/null 2>&1 || {
   echo "PyInstaller no está instalado. Ejecuta: python3 -m pip install PyInstaller==5.13.2" >&2
   exit 1
@@ -20,6 +21,7 @@ rm -rf "$DIST/pyinstaller" "$DIST/work" "$APPDIR"
 rm -f "$ROOT/DeepSeekHarnessInstaller.spec"
 pyinstaller --clean --noconfirm --onedir --name DeepSeekHarnessInstaller \
   --hidden-import=ipaddress \
+  --add-data "$DIST/Guia-DeepSeek-Harness-Punto-Vuela-Montejaque.pdf:." \
   --distpath "$DIST/pyinstaller" --workpath "$DIST/work" installer.py
 
 # PyInstaller 5.13's bootstrap imports urllib.parse before its PYZ importer is
