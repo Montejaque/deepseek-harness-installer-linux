@@ -70,9 +70,9 @@ jobs:
       - name: Create GitHub prerelease
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.0
+          tag_name: v0.1.1
           target_commitish: ${{ github.sha }}
-          name: DeepSeek Harness Installer v0.1.0
+          name: DeepSeek Harness Installer v0.1.1
           body: |
             Primera versión de pruebas del instalador AppImage para Linux x86_64.
 
