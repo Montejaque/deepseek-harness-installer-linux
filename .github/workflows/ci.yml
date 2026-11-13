@@ -61,7 +61,7 @@ jobs:
           status=$?
           set -e
           cat gui-smoke.log
-          if [ "$status" -ne 124 ] && [ "$status" -ne 137" ]; then
+          if [ "$status" -ne 124 ] && [ "$status" -ne 137 ]; then
             echo "El instalador terminó inesperadamente (código $status)." >&2
             exit 1
           fi
