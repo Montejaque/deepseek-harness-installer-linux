@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -226,4 +227,8 @@ class Installer(tk.Tk):
 
 
 if __name__ == "__main__":
+    if "--smoke-test" in sys.argv:
+        # Import/runtime check used by CI; does not require an X11 display.
+        print("DeepSeek Harness Installer: packaged runtime OK")
+        sys.exit(0)
     Installer().mainloop()
