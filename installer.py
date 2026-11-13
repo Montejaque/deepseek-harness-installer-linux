@@ -107,9 +107,12 @@ def latest_npm_version() -> str:
                  "User-Agent": "DeepSeek-Harness-Installer-Punto-Vuela/1.0"})
     with urllib.request.urlopen(request, timeout=18) as response:
         data = json.loads(response.read().decode("utf-8"))
-    version = data.get("dist-tags", {}).get("latest")
+    tags = data.get("dist-tags", {})
+    # Prefer the newest prerelease channel when it exists (for example 0.2.2-rc.2).
+    # Fall back to stable latest if npm has no next tag.
+    version = tags.get("next") or tags.get("latest")
     if not version:
-        raise RuntimeError("El registro npm no ha devuelto la etiqueta dist-tags.latest.")
+        raise RuntimeError("El registro npm no ha devuelto las etiquetas dist-tags.next ni dist-tags.latest.")
     return str(version)
 
 
