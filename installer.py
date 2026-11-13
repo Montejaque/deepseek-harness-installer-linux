@@ -166,6 +166,30 @@ def write_launchers(callback=None):
         '#!/bin/sh\n'
         'APP_DIR="$HOME/.local/opt/deepseek-harness"\n'
         'export PATH="$HOME/.local/bin:$PATH"\n'
+        '# Las aplicaciones abiertas desde GNOME no heredan necesariamente NVM.\n'
+        'if [ -s "$HOME/.nvm/nvm.sh" ]; then\n'
+        '  . "$HOME/.nvm/nvm.sh" --no-use\n'
+        '  if [ -f "$HOME/.nvm/alias/default" ]; then\n'
+        '    nvm use --silent default >/dev/null 2>&1 || true\n'
+        '  fi\n'
+        'fi\n'
+        '# Respaldo para instalaciones NVM sin alias default.\n'
+        'if ! command -v node >/dev/null 2>&1; then\n'
+        '  for NODE_BIN in "$HOME"/.nvm/versions/node/*/bin; do\n'
+        '    if [ -x "$NODE_BIN/node" ]; then PATH="$NODE_BIN:$PATH"; export PATH; break; fi\n'
+        '  done\n'
+        'fi\n'
+        'if ! command -v node >/dev/null 2>&1; then\n'
+        '  echo "No se encuentra Node.js. Instala Node.js 22.19.0 o superior y vuelve a intentarlo."\n'
+        '  echo "Rutas comprobadas: PATH y ~/.nvm/versions/node/*/bin"\n'
+        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
+        '  exit 127\n'
+        'fi\n'
+        'if [ ! -x "$APP_DIR/node_modules/.bin/dsh" ]; then\n'
+        '  echo "No se encuentra el ejecutable dsh. Abre DeepSeek Harness Installer y pulsa Instalar / actualizar."\n'
+        '  printf "Pulsa Intro para cerrar esta ventana..."\n; read answer\n'
+        '  exit 127\n'
+        'fi\n'
         'cd "$HOME" || exit 1\n'
         'exec "$APP_DIR/node_modules/.bin/dsh" web "$@"\n',
         encoding="utf-8")
@@ -426,13 +450,22 @@ class Installer(tk.Tk):
             "La carpeta ~/.dsh, con perfiles, sesiones y configuración, NO se eliminará. ¿Continuar?", parent=self):
             return
         def worker():
-            self.progress_update(20, "Eliminando paquete…")
-            shutil.rmtree(OPT, ignore_errors=True)
+            self.progress_update(15, "Cerrando y eliminando la aplicación…")
+            # Eliminar únicamente la instalación administrada; nunca tocar ~/.dsh.
+            if OPT.exists():
+                shutil.rmtree(OPT)
+            self.progress_update(45, "Eliminando lanzador, icono y entrada del menú…")
+            removed = []
             for path in (LAUNCHER, DESKTOP, ICON):
                 try:
-                    path.unlink(missing_ok=True)
+                    if path.is_file() or path.is_symlink():
+                        path.unlink()
+                        removed.append(str(path))
                 except OSError as exc:
-                    self.log("Aviso: " + str(exc))
+                    raise RuntimeError("No se pudo eliminar " + str(path) + ": " + str(exc))
+            self.log("Elementos eliminados: " + (", ".join(removed) if removed else "no había accesos previos"))
+            if DATA.exists():
+                self.log("Datos personales conservados: " + str(DATA))
             self.progress_update(75, "Actualizando menú e iconos…")
             for command in (["update-desktop-database", str(APPS)],
                             ["xdg-desktop-menu", "forceupdate", "--mode", "user"],
