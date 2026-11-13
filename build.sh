@@ -17,6 +17,7 @@ command -v appimagetool >/dev/null 2>&1 || {
 }
 
 rm -rf "$DIST/pyinstaller" "$DIST/work" "$APPDIR"
+rm -f "$ROOT/DeepSeekHarnessInstaller.spec"
 pyinstaller --clean --noconfirm --onedir --name DeepSeekHarnessInstaller \
   --hidden-import=ipaddress \
   --distpath "$DIST/pyinstaller" --workpath "$DIST/work" installer.py
