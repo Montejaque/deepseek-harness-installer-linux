@@ -18,23 +18,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
-      - name: Validate Python syntax and npm registry lookup
-        run: |
-          python3 -m py_compile installer.py docs/generate_guide.py
-          python3 - <<'PY'
-          import json
-          from unittest.mock import patch
-          import installer
-          assert installer.version_tuple("v22.19.0") == (22, 19, 0)
-          class Response:
-              def __enter__(self): return self
-              def __exit__(self, *args): return False
-              def read(self):
-                  return json.dumps({"dist-tags": {"latest": "1.2.3"}}).encode()
-          with patch("installer.urllib.request.urlopen", return_value=Response()):
-              assert installer.latest_npm_version() == "1.2.3"
-          print("NPM_REGISTRY_VERSION_QUERY_TEST_OK")
-          PY
+      - name: Validate Python syntax
+        run: python3 -m py_compile installer.py docs/generate_guide.py
       - name: Validate build script
         run: bash -n build.sh
 
@@ -53,6 +38,20 @@ jobs:
           apt-get update
           apt-get install -y python3 python3-pip python3-tk tcl8.6 tk8.6 xvfb xauth xdotool wget ca-certificates file
           python3 -m pip install --user --no-cache-dir 'PyInstaller==5.13.2' 'reportlab<4.4'
+          python3 - <<'PY'
+          import json
+          from unittest.mock import patch
+          import installer
+          assert installer.version_tuple("v22.19.0") == (22, 19, 0)
+          class Response:
+              def __enter__(self): return self
+              def __exit__(self, *args): return False
+              def read(self):
+                  return json.dumps({"dist-tags": {"latest": "1.2.3"}}).encode()
+          with patch("installer.urllib.request.urlopen", return_value=Response()):
+              assert installer.latest_npm_version() == "1.2.3"
+          print("NPM_REGISTRY_VERSION_QUERY_TEST_OK")
+          PY
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O "$RUNNER_TEMP/appimagetool"
           chmod +x "$RUNNER_TEMP/appimagetool"
