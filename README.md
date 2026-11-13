@@ -42,7 +42,7 @@ chmod +x DeepSeek-Harness-Installer-x86_64.AppImage
 
 ## Desarrollo
 
-Consulta [BUILD.md](BUILD.md). GitHub Actions compila en Ubuntu 20.04 para conservar compatibilidad con glibc 2.31. Cada push a `main` publica un artefacto de prueba; una etiqueta `v*` genera una GitHub Release.
+Consulta [BUILD.md](BUILD.md). GitHub Actions compila dentro de Ubuntu 20.04 (glibc 2.31) y comprueba que aparece la ventana real del instalador antes de publicar el artefacto. Cada push a `main` publica una compilación preliminar; no se considera estable hasta superar también las pruebas de instalación y ejecución del paquete npm en un equipo de destino.
 
 ## Seguridad
 
