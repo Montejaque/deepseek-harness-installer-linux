@@ -14,7 +14,7 @@ jobs:
   validate:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate Python syntax
         run: python3 -m py_compile installer.py
       - name: Validate build script
@@ -27,18 +27,26 @@ jobs:
       image: ubuntu:20.04
     steps:
       - name: Install build dependencies
+        shell: bash
         run: |
+          set -euxo pipefail
           export DEBIAN_FRONTEND=noninteractive
-          # Ubuntu 20.04 is EOL; use the official old-releases archive for reproducible builds.
-          sed -i -E 's|https?://(archive|security).ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' /etc/apt/sources.list
+          # Ubuntu 20.04 is EOL; rewrite only the hostnames, preserving URL syntax.
+          sed -i \
+            -e 's|http://archive.ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' \
+            -e 's|https://archive.ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' \
+            -e 's|http://security.ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' \
+            -e 's|https://security.ubuntu.com/ubuntu|http://old-releases.ubuntu.com/ubuntu|g' \
+            /etc/apt/sources.list
           apt-get -o Acquire::Retries=3 update
           apt-get install -y python3 python3-pip python3-tk wget ca-certificates file
           python3 -m pip install --no-cache-dir 'PyInstaller==5.13.2'
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O /usr/local/bin/appimagetool
           chmod +x /usr/local/bin/appimagetool
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build AppImage on Ubuntu 20.04
         run: |
+          set -euxo pipefail
           chmod +x build.sh
           ./build.sh
       - name: Upload AppImage artifact
